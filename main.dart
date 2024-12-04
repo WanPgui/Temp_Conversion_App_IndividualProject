@@ -5,6 +5,8 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -18,6 +20,8 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key});
+
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
@@ -27,36 +31,58 @@ class _MyHomePageState extends State<MyHomePage> {
   final _temperatureController = TextEditingController();
   String _conversionType = 'Fahrenheit to Celsius';
   double _convertedValue = 0.0;
-  List<String> _history = [];
+  final List<String> _history = [];
+  bool _isDarkMode = false;
 
   void _convertTemperature() {
     if (_formKey.currentState!.validate()) {
       setState(() {
         try {
+          double inputTemperature = double.parse(_temperatureController.text);
           if (_conversionType == 'Fahrenheit to Celsius') {
-            _convertedValue = (_temperatureController.text.isEmpty)
-                ? 0.0
-                : (double.parse(_temperatureController.text) - 32) * 5 / 9;
-            _history.add('F to C: ${_temperatureController.text} => ${_convertedValue.toStringAsFixed(2)}');
+            _convertedValue = (inputTemperature - 32) * 5 / 9;
+            _history.add(
+                'F to C: ${inputTemperature.toStringAsFixed(1)} => ${_convertedValue.toStringAsFixed(2)}');
           } else {
-            _convertedValue = (_temperatureController.text.isEmpty)
-                ? 0.0
-                : double.parse(_temperatureController.text) * 9 / 5 + 32;
-            _history.add('C to F: ${_temperatureController.text} => ${_convertedValue.toStringAsFixed(2)}');
+            _convertedValue = inputTemperature * 9 / 5 + 32;
+            _history.add(
+                'C to F: ${inputTemperature.toStringAsFixed(1)} => ${_convertedValue.toStringAsFixed(2)}');
           }
+          _temperatureController.clear();
         } catch (e) {
-          // handle error, e.g., show a toast message or an error dialog
-          print('Error: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error: Invalid input')),
+          );
         }
       });
     }
+  }
+
+  void _reset() {
+    setState(() {
+      _temperatureController.clear();
+      _convertedValue = 0.0;
+      _history.clear();
+    });
+  }
+
+  void _toggleTheme() {
+    setState(() {
+      _isDarkMode = !_isDarkMode;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Temperature Conversion App'),
+        title: const Text('Temperature Conversion App'),
+        actions: [
+          IconButton(
+            icon: Icon(_isDarkMode ? Icons.wb_sunny : Icons.nightlight_round),
+            onPressed: _toggleTheme,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -64,25 +90,31 @@ class _MyHomePageState extends State<MyHomePage> {
           key: _formKey,
           child: Column(
             children: [
-              Text(
+              const Text(
                 'Enter temperature:',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _temperatureController,
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                   labelText: 'Temperature',
+                  filled: true,
+                  fillColor: _isDarkMode ? Colors.grey[800] : Colors.white,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a temperature value';
                   }
+                  if (double.tryParse(value) == null) {
+                    return 'Please enter a valid number';
+                  }
                   return null;
                 },
+                keyboardType: TextInputType.number,
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 value: _conversionType,
                 onChanged: (value) {
@@ -106,46 +138,62 @@ class _MyHomePageState extends State<MyHomePage> {
                   return null;
                 },
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _convertTemperature,
-                child: Text('Convert'),
+                child: const Text('Convert'),
               ),
-              SizedBox(height: 20),
-              Text(
+              const SizedBox(height: 20),
+              const Text(
                 'Result:',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 10),
-              SelectableText(
-                _convertedValue.toStringAsFixed(2),
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              const SizedBox(height: 10),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: _isDarkMode ? Colors.white : Colors.black,
+                ),
+                child: SelectableText(
+                  _convertedValue.toStringAsFixed(2),
+                ),
               ),
-              SizedBox(height: 20),
-              Text(
+              const SizedBox(height: 20),
+              const Text(
                 'History:',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 20),
-              SingleChildScrollView(
-                child: Column(
-                  children: [
-                    ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _history.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          title: Text(_history[index]),
-                        );
-                      },
-                    ),
-                  ],
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _history.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(
+                        _history[index],
+                        style: TextStyle(
+                            color: _isDarkMode ? Colors.white : Colors.black),
+                      ),
+                    );
+                  },
                 ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _reset,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      Colors.red, // Change button color to red for reset
+                ),
+                child: Text('Reset'),
               ),
             ],
           ),
         ),
       ),
+      backgroundColor: _isDarkMode ? Colors.black : Colors.grey[200],
     );
   }
 }
